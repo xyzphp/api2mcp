@@ -1,0 +1,22 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+playwright-report/
+test-results/
+.DS_Store
+data/
+bin/
+.local/
+coverage.out
+*.db
+*.db-wal
+*.db-shm
+*.db.lock
+*.log
+# Local session evidence and design references can include real credentials.
+/docs/design/
+/docs/*-validation.md
+/docs/mcp-server-research.md

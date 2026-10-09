@@ -1,0 +1,114 @@
+openapi: 3.0.3
+info:
+  title: Mock 业务 API
+  version: '1.0.0'
+  description: 独立 HTTP Mock 服务，支持真实的用户与订单读写。
+servers:
+  - url: http://mock-api:9090/v1
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      summary: 查询用户列表
+      tags: [用户]
+      parameters:
+        - in: query
+          name: page
+          schema: {type: integer, minimum: 1}
+        - in: query
+          name: limit
+          schema: {type: integer, minimum: 1, maximum: 100}
+        - in: query
+          name: q
+          schema: {type: string}
+      responses:
+        '200': {description: 用户列表}
+    post:
+      operationId: createUser
+      summary: 创建用户
+      tags: [用户]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UserInput'}
+      responses:
+        '201': {description: 创建成功}
+  /users/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: {type: string, minLength: 1}
+    get:
+      operationId: getUser
+      summary: 查询用户详情
+      tags: [用户]
+      responses:
+        '200': {description: 用户详情}
+    patch:
+      operationId: updateUser
+      summary: 更新用户
+      tags: [用户]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UserInput'}
+      responses:
+        '200': {description: 更新成功}
+    delete:
+      operationId: deleteUser
+      summary: 删除用户
+      tags: [用户]
+      responses:
+        '204': {description: 删除成功}
+  /orders:
+    get:
+      operationId: listOrders
+      summary: 查询订单列表
+      tags: [订单]
+      parameters:
+        - in: query
+          name: userId
+          schema: {type: string}
+      responses:
+        '200': {description: 订单列表}
+    post:
+      operationId: createOrder
+      summary: 创建订单
+      tags: [订单]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, total]
+              additionalProperties: false
+              properties:
+                userId: {type: string, minLength: 1}
+                total: {type: number, minimum: 0}
+      responses:
+        '201': {description: 创建成功}
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      summary: 查询订单详情
+      tags: [订单]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, minLength: 1}
+      responses:
+        '200': {description: 订单详情}
+components:
+  schemas:
+    UserInput:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name: {type: string, minLength: 1, maxLength: 80}
+        email: {type: string, maxLength: 200}

@@ -1,0 +1,53 @@
+name: api2mcp
+x-go-build: &go-build
+  context: .
+  args:
+    GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+    HTTP_PROXY: ${DOCKER_HTTP_PROXY:-}
+    HTTPS_PROXY: ${DOCKER_HTTPS_PROXY:-}
+    ALL_PROXY: ${DOCKER_ALL_PROXY:-}
+    NO_PROXY: localhost,127.0.0.1,mock-api
+services:
+  api2mcp:
+    image: ${API2MCP_IMAGE:-api2mcp:local}
+    build:
+      <<: *go-build
+      target: runtime
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    environment:
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?请先执行 make init}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?请先执行 make init}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      BASE_PATH: ${BASE_PATH:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SEED_MOCK: ${SEED_MOCK:-true}
+      MOCK_API_URL: http://mock-api:9090/v1
+      UPSTREAM_TIMEOUT_SECONDS: ${UPSTREAM_TIMEOUT_SECONDS:-20}
+    volumes:
+      - app-data:/data
+    depends_on:
+      mock-api:
+        condition: service_started
+    restart: unless-stopped
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+  mock-api:
+    image: ${API2MCP_MOCK_IMAGE:-api2mcp-mock:local}
+    build:
+      <<: *go-build
+      target: mock
+    entrypoint: ["/mockapi"]
+    environment:
+      MOCK_API_URL: http://mock-api:9090/v1
+    ports:
+      - "127.0.0.1:${MOCK_PORT:-9090}:9090"
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+volumes:
+  app-data:

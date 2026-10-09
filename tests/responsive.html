@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API2MCP 响应式布局检查</title>
+<style>
+  body { margin: 24px; background: #e9eef6; font: 14px system-ui, sans-serif; color: #233353; }
+  header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  select { padding: 8px; border: 1px solid #cbd6e8; border-radius: 6px; }
+  iframe { display: block; width: 390px; height: 844px; border: 1px solid #cad5e5; border-radius: 12px; background: #fff; }
+  a { color: #245df5; }
+</style>
+<header><strong>响应式布局检查</strong><label>设备尺寸 <select id="size"><option value="390">手机 · 390 px</option><option value="760">平板 · 760 px</option><option value="960">平板 · 960 px</option><option value="1440">桌面 · 1440 px</option></select></label><a href="../index.html">返回后台</a></header>
+<iframe id="device" title="API2MCP 设备预览" src="../index.html"></iframe>
+<script>
+  document.getElementById('size').addEventListener('change', event => {
+    document.getElementById('device').style.width = event.target.value + 'px';
+  });
+</script>
+</html>

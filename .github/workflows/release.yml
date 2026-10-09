@@ -1,0 +1,107 @@
+name: Docker release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Docker tag (manual build)
+        required: true
+        default: edge
+      publish:
+        description: Push images to GHCR (false only builds)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-release-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/verify.yml
+  publish:
+    name: ${{ matrix.image }} (amd64 + arm64)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api2mcp
+            target: runtime
+          - image: api2mcp-mock
+            target: mock
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name || github.sha }}
+      - name: Image name and tag
+        id: image
+        env:
+          OWNER: ${{ github.repository_owner }}
+          IMAGE: ${{ matrix.image }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          tag = os.environ['RELEASE_TAG']
+          if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}', tag):
+              raise SystemExit('Release tag must be a valid Docker tag, for example v0.3.0')
+          name = 'ghcr.io/' + os.environ['OWNER'].lower() + '/' + os.environ['IMAGE']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print('name=' + name, file=output)
+              print('tag=' + tag, file=output)
+          PY
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Log in to GHCR
+        if: github.event_name == 'release' || inputs.publish
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image tags and labels
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ steps.image.outputs.name }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=${{ steps.image.outputs.tag }}
+            type=semver,pattern={{version}},value=${{ steps.image.outputs.tag }}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
+          labels: |
+            org.opencontainers.image.title=API2MCP
+            org.opencontainers.image.description=Turn OpenAPI documents into HTTP MCP servers
+            org.opencontainers.image.licenses=MIT
+      - name: Build multi-platform images
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'release' || inputs.publish }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=release-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.target }}
+      - name: Publish build summary
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          TAG: ${{ steps.image.outputs.tag }}
+          PUBLISHED: ${{ github.event_name == 'release' || inputs.publish }}
+        run: |
+          {
+            echo "### $IMAGE:$TAG"
+            echo "Platforms: linux/amd64, linux/arm64"
+            echo "Pushed to GHCR: $PUBLISHED"
+          } >> "$GITHUB_STEP_SUMMARY"

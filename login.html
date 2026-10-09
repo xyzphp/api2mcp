@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#245df5">
+    <base href="{{APP_BASE_HREF}}">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="stylesheet" href="assets/styles.css">
+    <script defer src="assets/login.js"></script>
+    <title>API2MCP · 登录</title>
+  </head>
+  <body class="login-page">
+    <main class="login-shell">
+      <section class="login-intro">
+        <a class="login-brand" href="login"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>API2MCP</span></a>
+        <div class="login-intro-copy">
+          <h1>让 API 成为<br>AI 的工具。</h1>
+          <p>在一个后台，管理文档、接口与 MCP 服务。</p>
+        </div>
+      </section>
+      <section class="login-form-panel">
+        <div class="login-form-content">
+          <div class="login-lock" aria-hidden="true"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/></svg></div>
+          <h2>登录 API2MCP</h2>
+          <form id="login-form">
+            <label class="field" for="login-token">管理员登录 Token
+              <input id="login-token" name="token" type="password" required autocomplete="off" autofocus spellcheck="false" placeholder="输入登录 Token" maxlength="512">
+            </label>
+            <label class="login-show-token"><input type="checkbox" id="show-login-token">显示 Token</label>
+            <div id="login-error" class="form-error" role="alert" hidden></div>
+            <button class="button primary full-width" id="login-submit" type="submit">登录后台 <span aria-hidden="true">→</span></button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

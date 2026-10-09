@@ -1,0 +1,50 @@
+openapi: 3.0.3
+info:
+  title: 库存服务 API
+  version: 1.0.0
+servers:
+  - url: https://inventory.example.com/v1
+paths:
+  /products:
+    get:
+      operationId: listProducts
+      summary: 查询商品列表
+      tags: [商品]
+      parameters:
+        - name: page
+          in: query
+          description: 页码
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: 商品列表
+          content:
+            application/json:
+              example:
+                data:
+                  - id: product_001
+                    name: 示例商品
+                    stock: 20
+                total: 1
+  /products/{id}/stock:
+    get:
+      operationId: getProductStock
+      summary: 查询商品库存
+      tags: [库存]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 商品 ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 当前库存
+          content:
+            application/json:
+              example:
+                id: product_001
+                stock: 20

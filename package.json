@@ -1,0 +1,11 @@
+{
+  "name": "api2mcp-admin",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "go run ./cmd/api2mcp",
+    "test": "node --test tests/core.test.mjs",
+    "mock": "go run ./cmd/mockapi"
+  }
+}
