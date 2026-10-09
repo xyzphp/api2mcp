@@ -2,7 +2,7 @@
 
 # API2MCP
 
-**导入 API 文档，勾选接口，发布多个独立的 HTTP MCP 服务。**
+**导入 API 文档生成 HTTP MCP 服务，也能代理已有的 MCP 地址。**
 
 一个可以自托管的 API → MCP 管理平台。Go 后端与原生 HTML / CSS / JavaScript 后台打包在同一个二进制中，通过 Docker 部署。已有 API 保持原来的实现，AI 客户端通过 Streamable HTTP 调用选中的接口。
 
@@ -20,6 +20,7 @@
 | 文档管理 | OpenAPI 3.0 / 3.1、Swagger 2.0，支持 JSON / YAML 文件、拖拽、粘贴、URL 导入与手动更新 |
 | API 调试 | 类似 Postman，编辑 Path / Query / Header / Cookie / JSON / 表单，查看状态、耗时、响应与脱敏后的实际请求 |
 | 多 MCP 服务 | 跨文档组合 API；独立地址、调用 Token、草稿、发布、更新、启停与复制 |
+| MCP 代理 | 填写已有 Streamable HTTP MCP URL，代理工具 / 资源 / 提示词，保留会话与流式响应；支持上游认证 Header 与客户端覆盖 |
 | 方法分组 | 按 GET、POST、PUT、PATCH、DELETE 等方式筛选，支持按组和当前结果批量勾选 |
 | 灵活凭证 | Basic / Bearer、自定义 Header / Query / Body / Cookie，支持嵌套 JSON、批量录入和逐项启停 |
 | 客户端配置 | 预览并复制 MCP JSON，自动带入共同 Header 凭证；调用者通过 Header 覆盖凭证与 `base_url` |
@@ -98,6 +99,12 @@ API 文档采用全宽列表与独立详情页，列表支持搜索和凭证状�
 
 从局域网 IP 登录时生成局域网 MCP 地址，从 HTTPS 域名登录时生成域名地址；配置 `BASE_PATH` 后自动带上路径前缀。
 
+### 代理已有 MCP
+
+在 **MCP Server → 添加 MCP 代理** 填写上游 URL 和可选认证 Header，发布后即可使用独立地址。在详情测试连接、查看工具并复制 JSON。无需导入 API 文档，支持 Streamable HTTP 的 GET / POST / DELETE、JSON / SSE 与有状态会话。客户端 Header 优先于后台配置，详见 [MCP 代理说明](docs/mcp-proxy.md)。
+
+![API 转换和 MCP 代理统一管理，隔离演示数据](docs/images/mcp-proxy.jpg)
+
 ## 开发与发布
 
 ```sh
@@ -121,6 +128,7 @@ go vet ./...
 | [配置说明](docs/configuration.md) | 环境变量、端口、Token、加密密钥、构建代理 |
 | [Docker / Nginx 部署](docs/deployment.md) | 源码构建、Release 镜像、局域网、子路径、备份 |
 | [凭证与 MCP 客户端](docs/credentials.md) | API 调试、参数格式、Header 透传和优先级 |
+| [MCP 代理](docs/mcp-proxy.md) | 上游 URL、认证、流式转发、会话与客户端覆盖 |
 | [管理 HTTP API](docs/http-api.md) | 登录、文档、服务、测试和日志接口 |
 | [本地开发](docs/development.md) | 目录结构、验证命令、UI 审查、调试方法 |
 | [GitHub Actions](docs/github-actions.md) | 提交验证、镜像发布、手动构建与权限 |

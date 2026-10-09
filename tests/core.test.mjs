@@ -18,6 +18,17 @@ test('未发布服务无法输出看似可用的客户端配置', () => {
   assert.throws(() => C.clientConfig({ slug: 'draft', status: 'draft', token: '' }, 'http://localhost'), /发布/);
 });
 
+test('MCP 代理 JSON 支持带 Query 的上游端点，客户端 Header 仍具有最高优先级', () => {
+  const server = { type: 'proxy', slug: 'remote', status: 'running', token: 'gateway-token' };
+  const target = 'https://mcp.example.com/nested/mcp/?token=upstream-token&tenant=a%2Bb';
+  const config = JSON.parse(C.clientConfig(server, 'http://localhost:18080/http_mcp', '{"authorization":"Bearer client-token"}', { base_url: target, Authorization: 'Bearer saved-token', 'X-Tenant': 'demo' }));
+  assert.equal(config.mcpServers.remote.url, 'http://localhost:18080/http_mcp/mcp/remote?token=gateway-token');
+  assert.deepEqual(config.mcpServers.remote.headers, { base_url: target, 'X-Tenant': 'demo', authorization: 'Bearer client-token' });
+  const overridden = JSON.parse(C.clientConfig(server, 'http://localhost', '{"X-API2MCP-Base-URL":"https://other.example/mcp?key=custom"}', { base_url: target }));
+  assert.deepEqual(overridden.mcpServers.remote.headers, { 'X-API2MCP-Base-URL': 'https://other.example/mcp?key=custom' });
+  assert.throws(() => C.clientConfig({ ...server, type: 'api' }, 'http://localhost', '{}', { base_url: target }), /查询参数/);
+});
+
 test('客户端 JSON 把自定义上游 Header 放进普通 headers，MCP Token 保持在 URL', () => {
   const server = { slug: 'custom', status: 'running', token: 'mcp-access-token' };
   const raw = '{"base_url":"https://api.example.com/v1","Authorization":"Bearer client-token","X-Key":"client-key"}';

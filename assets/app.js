@@ -10,7 +10,7 @@
   const mobileViewport = window.matchMedia('(max-width: 760px)');
   const state = {
     workspace: { documents: [], servers: [], logs: [], settings: { endpointOrigin: window.location.origin } }, page: 'servers', selectedId: '', selectedDocumentId: '',
-    serverQuery: '', serverStatus: 'all', documentQuery: '', documentCredential: 'all', apiQuery: '', apiMethod: 'all', logQuery: '', logStatus: 'all',
+    serverQuery: '', serverStatus: 'all', serverType: 'all', documentQuery: '', documentCredential: 'all', apiQuery: '', apiMethod: 'all', logQuery: '', logStatus: 'all',
     sidebarOpen: false, credentials: {}, storageError: false,
     dialog: null, connectionTab: 'address', clientDrafts: {}, clientHeaderConfigs: {}, clientHeaderLoads: {}, clientHeaderErrors: {}, clientHeaderGeneration: 0,
   };
@@ -63,6 +63,8 @@
   const getDocument = id => state.workspace.documents.find(doc => doc.id === id);
   const getOperation = id => allOperations().find(op => op.id === id);
   const endpoint = server => C.endpointFor(server, state.workspace.settings.endpointOrigin);
+  const isProxy = server => server?.type === 'proxy';
+  const configLabel = server => isProxy(server) ? '代理配置' : '配置 API';
   const matches = (value, query) => value.toLowerCase().includes(query.trim().toLowerCase());
   const navigation = [
     ['overview', '概览', 'home'], ['documents', 'API 文档', 'file'], ['servers', 'MCP Server', 'box'],
@@ -162,37 +164,44 @@
     return `<div class="page-heading"><div><h1>${title}${count ? ` <span class="heading-count"><i></i>${count}</span>` : ''}</h1><p>${subtitle}</p></div>${actions ? `<div class="button-group page-actions">${actions}</div>` : ''}</div>`;
   }
   function filteredServers() {
-    return state.workspace.servers.filter(server => matches(`${server.name} ${endpoint(server)}`, state.serverQuery) && (state.serverStatus === 'all' || state.serverStatus === server.status));
+    return state.workspace.servers.filter(server => matches(`${server.name} ${endpoint(server)} ${server.proxy?.url || ''}`, state.serverQuery) && (state.serverStatus === 'all' || state.serverStatus === server.status) && (state.serverType === 'all' || state.serverType === (server.type || 'api')));
   }
   const sourceDocuments = server => state.workspace.documents.filter(doc => doc.operations.some(op => server.operationIds.includes(op.id)));
   function serversPage() {
     const servers = filteredServers();
-    return heading('MCP Server 管理', '组合 API，连接你的 AI 客户端。每个服务都有独立地址和调用 Token。', button('导入 API 文档', 'import', 'upload') + button('创建 MCP Server', 'create', 'plus', 'primary'), `${state.workspace.servers.length} 个服务`) +
-      `<div class="server-summary-strip"><span><i class="summary-dot"></i><strong>${state.workspace.servers.filter(s => s.status === 'running').length}</strong> 个运行中</span><span><strong>${state.workspace.servers.filter(s => s.status === 'stopped').length}</strong> 个已停用</span><span><strong>${state.workspace.servers.filter(s => s.status === 'draft').length}</strong> 个草稿</span><span class="summary-protocol">${icon('globe', 15)}Streamable HTTP</span></div>
-      <section class="panel servers-panel server-directory" aria-label="MCP Server 列表"><div class="list-toolbar">${search('serverQuery', '搜索服务名称、调用地址', '搜索服务', state.serverQuery)}<select data-field="serverStatus" aria-label="筛选服务状态">${[['all', '全部状态'], ['running', '运行中'], ['stopped', '已停用'], ['draft', '草稿']].map(([id, label]) => `<option value="${id}" ${state.serverStatus === id ? 'selected' : ''}>${label}</option>`).join('')}</select></div><div class="server-list">${servers.length ? servers.map(serverCard).join('') : empty(state.workspace.servers.length ? '没有找到匹配的服务' : '创建第一个 MCP Server', state.workspace.servers.length ? '尝试其他关键词或服务状态。' : '导入文档后，自由组合 API 并生成独立调用地址。', state.workspace.servers.length ? button('清除筛选', 'clear-server-filters') : button('创建 MCP Server', 'create', 'plus', 'primary'))}</div><div class="list-footer"><span>共 ${servers.length} 个服务</span><span>点击服务名称查看详情与客户端配置</span></div></section>`;
+    return heading('MCP Server 管理', '组合 API 或代理已有 MCP，为客户端提供独立调用地址。', button('导入 API 文档', 'import', 'upload') + button('添加 MCP 代理', 'create-proxy', 'globe') + button('创建 MCP Server', 'create', 'plus', 'primary'), `${state.workspace.servers.length} 个服务`) +
+      `<div class="server-summary-strip"><span><i class="summary-dot"></i><strong>${state.workspace.servers.filter(s => s.status === 'running').length}</strong> 个运行中</span><span><strong>${state.workspace.servers.filter(s => s.status === 'stopped').length}</strong> 个已停用</span><span><strong>${state.workspace.servers.filter(s => s.status === 'draft').length}</strong> 个草稿</span><span><strong>${state.workspace.servers.filter(isProxy).length}</strong> 个 MCP 代理</span><span class="summary-protocol">${icon('globe', 15)}Streamable HTTP</span></div>
+      <section class="panel servers-panel server-directory" aria-label="MCP Server 列表"><div class="list-toolbar">${search('serverQuery', '搜索服务名称、调用地址或上游地址', '搜索服务', state.serverQuery)}<select data-field="serverType" aria-label="筛选服务类型">${[['all', '全部类型'], ['api', 'API 转换'], ['proxy', 'MCP 代理']].map(([id, label]) => `<option value="${id}" ${state.serverType === id ? 'selected' : ''}>${label}</option>`).join('')}</select><select data-field="serverStatus" aria-label="筛选服务状态">${[['all', '全部状态'], ['running', '运行中'], ['stopped', '已停用'], ['draft', '草稿']].map(([id, label]) => `<option value="${id}" ${state.serverStatus === id ? 'selected' : ''}>${label}</option>`).join('')}</select></div><div class="server-list">${servers.length ? servers.map(serverCard).join('') : empty(state.workspace.servers.length ? '没有找到匹配的服务' : '创建第一个 MCP Server', state.workspace.servers.length ? '尝试其他关键词或服务状态。' : '导入文档组合 API，或填写已有 MCP 地址添加代理。', state.workspace.servers.length ? button('清除筛选', 'clear-server-filters') : button('创建 MCP Server', 'create', 'plus', 'primary'))}</div><div class="list-footer"><span>共 ${servers.length} 个服务</span><span>点击服务名称查看详情与客户端配置</span></div></section>`;
   }
   function serverCard(server) {
     const sources = sourceDocuments(server);
+    const proxy = isProxy(server);
+    const metadata = proxy ? `<span class="server-type-badge">MCP 代理</span><i></i><span>Streamable HTTP</span><i></i><span>${server.proxy?.headerNames?.length || 0} 个认证 Header</span>` : `<span>${server.operationIds.length} 个 API</span><i></i><span>${sources.length} 份文档</span>`;
     return `<article class="server-card directory-card" data-server="${e(server.slug)}">
-      <div class="server-card-heading"><div class="service-icon ${color(server.color)}">${icon('box', 25)}</div><div class="server-card-info"><div class="server-title-line"><button class="server-title" data-action="show-server" data-id="${e(server.id)}">${e(server.name)}</button>${statusBadge(server.status)}${server.draft ? '<span class="tiny-badge">有未发布更改</span>' : ''}</div><div class="server-metadata"><span>${server.operationIds.length} 个 API</span><i></i><span>${sources.length} 份文档</span><i></i><span>${server.status === 'draft' ? '待发布' : C.versionLabel(server)}</span><div class="document-chips">${sources.slice(0, 2).map(doc => `<span class="document-chip">${e(doc.name)}</span>`).join('')}</div></div></div>
-      <details class="more-menu"><summary aria-label="${e(server.name)}更多操作" title="更多操作">${icon('more', 21)}</summary><div class="menu-popover"><button data-action="edit" data-id="${e(server.id)}">${icon('sliders', 15)}配置 API</button><button data-action="toggle-server" data-id="${e(server.id)}">${icon(server.status === 'running' ? 'pause' : 'play', 15)}${server.status === 'running' ? '停用服务' : server.status === 'draft' ? '编辑并发布' : '启用服务'}</button><button data-action="duplicate-server" data-id="${e(server.id)}">${icon('copy', 15)}复制为新服务</button><div class="menu-divider"></div><button class="destructive-text" data-action="delete-server" data-id="${e(server.id)}">${icon('trash', 15)}删除服务</button></div></details></div>
-      ${server.description ? `<p class="server-description">${e(server.description)}</p>` : ''}
+      <div class="server-card-heading"><div class="service-icon ${color(server.color)}">${icon(proxy ? 'globe' : 'box', 25)}</div><div class="server-card-info"><div class="server-title-line"><button class="server-title" data-action="show-server" data-id="${e(server.id)}">${e(server.name)}</button>${statusBadge(server.status)}${server.draft ? '<span class="tiny-badge">有未发布更改</span>' : ''}</div><div class="server-metadata">${metadata}<i></i><span>${server.status === 'draft' ? '待发布' : C.versionLabel(server)}</span><div class="document-chips">${sources.slice(0, 2).map(doc => `<span class="document-chip">${e(doc.name)}</span>`).join('')}</div></div></div>
+      <details class="more-menu"><summary aria-label="${e(server.name)}更多操作" title="更多操作">${icon('more', 21)}</summary><div class="menu-popover"><button data-action="edit" data-id="${e(server.id)}">${icon('sliders', 15)}${configLabel(server)}</button><button data-action="toggle-server" data-id="${e(server.id)}">${icon(server.status === 'running' ? 'pause' : 'play', 15)}${server.status === 'running' ? '停用服务' : server.status === 'draft' ? '编辑并发布' : '启用服务'}</button><button data-action="duplicate-server" data-id="${e(server.id)}">${icon('copy', 15)}复制为新服务</button><div class="menu-divider"></div><button class="destructive-text" data-action="delete-server" data-id="${e(server.id)}">${icon('trash', 15)}删除服务</button></div></details></div>
+      ${server.description ? `<p class="server-description">${e(server.description)}</p>` : ''}${proxy ? `<div class="proxy-upstream-line">${icon('globe', 14)}<span>上游</span><code>${e(server.proxy?.url || '尚未配置')}</code></div>` : ''}
       <div class="server-card-bottom"><div class="endpoint-field ${server.status === 'draft' ? 'endpoint-unpublished' : ''}"><span class="endpoint-prefix">HTTP</span><code title="${server.status === 'draft' ? '' : e(endpoint(server))}">${server.status === 'draft' ? '发布后生成独立调用地址' : e(endpoint(server))}</code>${iconButton(`复制${server.name}地址`, 'copy', 'copy-url', server.id, server.status === 'draft')}</div><div class="card-actions">${button('JSON 配置', 'open-client-config', 'code', '', server.id, server.status === 'draft')}${button('测试连接', 'test', 'play', '', server.id, server.status === 'draft')}${button('查看详情', 'show-server', 'arrow', 'detail-link', server.id)}</div></div>
     </article>`;
   }
   function serverDetailPage() {
     const server = getServer(state.selectedId);
     if (!server) return empty('服务不存在', '该服务可能已被删除。', button('返回服务列表', 'navigate', 'arrow', '', 'servers'));
+    const proxy = isProxy(server);
     const selected = server.operationIds.map(getOperation).filter(Boolean);
     const sources = sourceDocuments(server);
     const connectionContent = state.connectionTab === 'json'
       ? clientConfigPanel(server)
       : `<div class="connection-fields"><div class="connection-address"><label>MCP 调用地址 <span class="tiny-badge">Streamable HTTP</span></label><div class="endpoint-field"><code>${server.status === 'draft' ? '发布后生成' : e(C.endpointFor(server, state.workspace.settings.endpointOrigin))}</code>${iconButton('复制服务连接地址', 'copy', 'copy-url', server.id, server.status === 'draft')}</div></div><div class="connection-token"><label>调用 Token ${iconButton('重置调用 Token', 'shield', 'rotate-token', server.id, !server.token)}</label><div class="token-field"><code class="visible-token" aria-label="MCP 调用 Token">${e(server.token || '发布后生成')}</code>${iconButton('复制访问 Token', 'copy', 'copy-token', server.id, !server.token)}</div></div></div>`;
     return `<button class="text-button back-to-servers" data-action="navigate" data-id="servers">${icon('arrow', 16)}返回服务列表</button>` +
-      heading(`<span class="service-icon service-icon-small ${color(server.color)}">${icon('box', 24)}</span>${e(server.name)}${statusBadge(server.status)}`, e(server.description || '管理开放 API 与 MCP 客户端连接配置。'), button('配置 API', 'edit', 'sliders', '', server.id) + button('测试连接', 'test', 'play', 'primary', server.id, server.status === 'draft')) +
+      heading(`<span class="service-icon service-icon-small ${color(server.color)}">${icon(proxy ? 'globe' : 'box', 24)}</span>${e(server.name)}${statusBadge(server.status)}`, e(server.description || (proxy ? '代理已有 MCP 服务，管理连接信息与访问凭证。' : '管理开放 API 与 MCP 客户端连接配置。')), button(configLabel(server), 'edit', 'sliders', '', server.id) + button('测试连接', 'test', 'play', 'primary', server.id, server.status === 'draft')) +
       `${server.draft ? `<div class="draft-note">${icon('info', 16)}有未发布更改，下方展示当前已发布配置。${button('继续编辑', 'edit', '', '', server.id)}</div>` : ''}
-      <section class="panel server-connection ${state.connectionTab === 'json' ? 'server-connection-json' : ''}" aria-label="服务连接信息"><div class="connection-tabs" role="tablist" aria-label="连接信息视图"><button role="tab" aria-selected="${state.connectionTab === 'address'}" aria-controls="connection-view" data-action="connection-tab" data-id="address">地址与 Token</button><button role="tab" aria-selected="${state.connectionTab === 'json'}" aria-controls="connection-view" data-action="connection-tab" data-id="json">JSON 配置</button></div><div id="connection-view" role="tabpanel">${connectionContent}</div><div class="connection-meta"><span>服务标识 <code>${e(server.slug)}</code></span><span>版本 <strong>${server.status === 'draft' ? '待发布' : C.versionLabel(server)}</strong></span><span>${selected.length} 个 API · ${sources.length} 份文档</span></div></section>
-      <section class="panel server-api-panel"><div class="section-heading"><div><h2>开放的 API</h2><p>客户端可以调用以下接口。点击接口可直接测试。</p></div>${button('管理 API', 'edit', 'sliders', '', server.id)}</div><div class="table-scroll"><table class="server-api-table"><thead><tr><th>方法</th><th>接口</th><th>API 文档</th><th></th></tr></thead><tbody>${selected.map(op => `<tr><td>${methodBadge(op.method)}</td><td><button class="api-name-button" data-action="operation" data-id="${e(op.id)}">${e(op.name)}</button><code>${e(op.path)}</code></td><td>${e(getDocument(op.documentId)?.name)}</td><td>${button('测试', 'operation', 'play', '', op.id)}</td></tr>`).join('')}</tbody></table></div>${selected.length ? '' : empty('还没有开放 API', '选择接口并发布服务后即可调用。', button('配置 API', 'edit', 'plus', '', server.id))}</section>`;
+      <section class="panel server-connection ${state.connectionTab === 'json' ? 'server-connection-json' : ''}" aria-label="服务连接信息"><div class="connection-tabs" role="tablist" aria-label="连接信息视图"><button role="tab" aria-selected="${state.connectionTab === 'address'}" aria-controls="connection-view" data-action="connection-tab" data-id="address">地址与 Token</button><button role="tab" aria-selected="${state.connectionTab === 'json'}" aria-controls="connection-view" data-action="connection-tab" data-id="json">JSON 配置</button></div><div id="connection-view" role="tabpanel">${connectionContent}</div><div class="connection-meta"><span>服务标识 <code>${e(server.slug)}</code></span><span>版本 <strong>${server.status === 'draft' ? '待发布' : C.versionLabel(server)}</strong></span><span>${proxy ? 'MCP 代理 · Streamable HTTP' : `${selected.length} 个 API · ${sources.length} 份文档`}</span></div></section>
+      ${proxy ? proxyDetailPanel(server) : `<section class="panel server-api-panel"><div class="section-heading"><div><h2>开放的 API</h2><p>客户端可以调用以下接口。点击接口可直接测试。</p></div>${button('管理 API', 'edit', 'sliders', '', server.id)}</div><div class="table-scroll"><table class="server-api-table"><thead><tr><th>方法</th><th>接口</th><th>API 文档</th><th></th></tr></thead><tbody>${selected.map(op => `<tr><td>${methodBadge(op.method)}</td><td><button class="api-name-button" data-action="operation" data-id="${e(op.id)}">${e(op.name)}</button><code>${e(op.path)}</code></td><td>${e(getDocument(op.documentId)?.name)}</td><td>${button('测试', 'operation', 'play', '', op.id)}</td></tr>`).join('')}</tbody></table></div>${selected.length ? '' : empty('还没有开放 API', '选择接口并发布服务后即可调用。', button('配置 API', 'edit', 'plus', '', server.id))}</section>`}`;
+  }
+  function proxyDetailPanel(server) {
+    const names = server.proxy?.headerNames || [];
+    return `<section class="panel server-api-panel proxy-detail-panel"><div class="section-heading"><div><h2>上游 MCP 服务</h2><p>工具、资源和提示词由上游提供，协议消息与流式响应直接透传。</p></div>${button('查看上游工具', 'test', 'play', '', server.id, server.status === 'draft')}</div><div class="proxy-route"><div><span>当前代理地址</span><code>${server.status === 'draft' ? '发布后生成' : e(endpoint(server))}</code></div><span class="proxy-route-arrow">${icon('arrow', 21)}</span><div><span>上游 MCP 地址</span><code>${e(server.proxy?.url || '尚未配置')}</code></div></div><div class="proxy-auth-summary"><span>上游认证 Header</span>${names.length ? names.map(name => `<code>${e(name)}</code>`).join('') : '<span class="muted">未配置</span>'}${button('编辑代理', 'edit', 'sliders', '', server.id)}</div><div class="proxy-feature-strip"><span>${icon('check', 15)}独立访问 Token</span><span>${icon('check', 15)}会话与流式响应透传</span><span>${icon('check', 15)}客户端 Header 优先</span></div></section>`;
   }
   function clientDraft(server) {
     return state.clientDrafts[server.id] ||= { text: '{}' };
@@ -220,19 +229,23 @@
     return C.clientConfig(server, state.workspace.settings.endpointOrigin, clientDraft(server).text, clientHeaderConfig(server).headers);
   }
   function clientConfigPanel(server) {
-    if (server.status === 'draft') return empty('发布后生成 JSON 配置', '先选择 API 并发布此服务。', button('编辑并发布', 'edit', 'arrow', 'primary', server.id));
+    if (server.status === 'draft') return empty('发布后生成 JSON 配置', isProxy(server) ? '先配置上游 MCP 地址并发布此服务。' : '先选择 API 并发布此服务。', button('编辑并发布', 'edit', 'arrow', 'primary', server.id));
+    const proxy = isProxy(server);
     const draft = clientDraft(server);
     const loaded = Object.prototype.hasOwnProperty.call(state.clientHeaderConfigs, server.id);
     const defaults = clientHeaderConfig(server);
     const loading = !loaded && !state.clientHeaderErrors[server.id];
-    const loadingMessage = loading ? `<div class="client-header-status">${icon('loader', 15, 'spin')}正在读取所选 API 文档的凭证配置…</div>` : '';
+    const loadingMessage = loading ? `<div class="client-header-status">${icon('loader', 15, 'spin')}正在读取${proxy ? '上游 MCP' : '所选 API 文档'}的凭证配置…</div>` : '';
     const fetchError = state.clientHeaderErrors[server.id] || '';
     let json = '', error = '';
     try { json = loaded ? C.clientConfig(server, state.workspace.settings.endpointOrigin, draft.text, defaults.headers) : ''; } catch (err) { error = err.message; }
     const conflictMessage = defaults.conflicts.length ? `<div class="client-header-conflicts" role="status">${icon('info', 15)}所选文档中以下 Header 配置不一致，未放入公共 JSON：<code>${e(defaults.conflicts.join('、'))}</code>。后台仍按各文档自己的凭证调用。</div>` : '';
-    const emptyCredentials = loaded && !Object.keys(defaults.headers).length ? `<p class="form-hint">没有可自动导出的共同 Header 凭证。Query、Body 等凭证继续由服务端按 API 文档配置使用。</p>` : '';
+    const emptyCredentials = loaded && !Object.keys(defaults.headers).length ? `<p class="form-hint">${proxy ? '未配置上游认证 Header。' : '没有可自动导出的共同 Header 凭证。Query、Body 等凭证继续由服务端按 API 文档配置使用。'}</p>` : '';
+    const sourceLabel = proxy ? '上游 MCP' : 'API';
+    const priorityDescription = proxy ? '后台保存的 MCP 地址和认证 Header 会自动加入右侧 JSON；自定义项同名时优先。' : '所选 API 文档的 Header 凭证会自动加入右侧 JSON；自定义项同名时优先。';
+    const proxyHint = proxy ? 'base_url 指定完整上游 MCP 地址，可包含查询参数。会话标识、协议版本和流式消息由代理保留。' : 'Query、Body 等参数由服务端按各文档配置使用。可在这里设置 base_url 或 X-API2MCP-Base-URL 覆盖上游 API 地址；代理会识别该 Header，不会将其转发给上游。';
     const copyDisabled = !loaded || !!error || !!fetchError;
-    return `<div class="client-config-layout"><section class="panel client-variables"><div class="section-heading"><div><h2>自定义 Header 覆盖项</h2><p>直接通过 MCP 请求 Header 透传，可覆盖自动带入的 API 凭证。</p></div><span class="count-badge">优先级最高</span></div>${loadingMessage}${fetchError ? `<div class="form-error" role="alert">${e(fetchError)}${button('重试读取', 'retry-client-headers', '', '', server.id)}</div>` : ''}<div class="client-template-buttons">${button('API 基础地址', 'client-template', '', '', 'base')}${button('Basic Auth', 'client-template', '', '', 'basic')}${button('Bearer Token', 'client-template', '', '', 'bearer')}${button('API Key', 'client-template', '', '', 'custom')}${button('清空覆盖项', 'client-template', '', '', 'empty')}</div><label class="field">可选 Header 覆盖 JSON<textarea id="client-credentials-json" data-field="client-credentials-json" aria-label="客户端自定义 Header JSON" spellcheck="false" rows="12" ${loaded ? '' : 'disabled'}>${e(draft.text)}</textarea></label><div class="credential-priority">${icon('layers', 16)}所选 API 文档的 Header 凭证会自动加入右侧 JSON；自定义项同名时优先。</div><p class="form-hint">Query、Body 等参数由服务端按各文档配置使用。可在这里设置 <code>base_url</code> 或 <code>X-API2MCP-Base-URL</code> 覆盖上游 API 地址；代理会识别该 Header，不会将其转发给上游。</p>${conflictMessage}${emptyCredentials}</section><section class="panel client-json-panel"><div class="section-heading"><div><h2>MCP JSON 配置</h2><p>地址包含 MCP 调用 Token；headers 包含可共享的 API 凭证。</p></div>${button('复制 JSON', 'copy-client-json', 'copy', 'primary', server.id, copyDisabled)}</div><div class="client-json-toolbar"><span>mcpServers · ${e(server.slug)}${loaded ? ` · ${Object.keys(defaults.headers).length} 个自动配置 Header` : ''}</span></div><pre class="client-json-preview" tabindex="0" aria-label="MCP JSON 配置"><code id="client-json-code">${e(json)}</code></pre><div id="client-config-error" role="alert" class="form-error" ${error ? '' : 'hidden'}>${e(error)}</div><p class="form-hint">复制后的 JSON 会携带其中显示的认证值，请按客户端配置文件的访问权限妥善保管。</p></section></div>`;
+    return `<div class="client-config-layout"><section class="panel client-variables"><div class="section-heading"><div><h2>自定义 Header 覆盖项</h2><p>直接通过 MCP 请求 Header 透传，可覆盖自动带入的${sourceLabel}凭证。</p></div><span class="count-badge">优先级最高</span></div>${loadingMessage}${fetchError ? `<div class="form-error" role="alert">${e(fetchError)}${button('重试读取', 'retry-client-headers', '', '', server.id)}</div>` : ''}<div class="client-template-buttons">${button(proxy ? '上游 MCP 地址' : 'API 基础地址', 'client-template', '', '', 'base')}${button('Basic Auth', 'client-template', '', '', 'basic')}${button('Bearer Token', 'client-template', '', '', 'bearer')}${button('API Key', 'client-template', '', '', 'custom')}${button('清空覆盖项', 'client-template', '', '', 'empty')}</div><label class="field">可选 Header 覆盖 JSON<textarea id="client-credentials-json" data-field="client-credentials-json" aria-label="客户端自定义 Header JSON" spellcheck="false" rows="12" ${loaded ? '' : 'disabled'}>${e(draft.text)}</textarea></label><div class="credential-priority">${icon('layers', 16)}${priorityDescription}</div><p class="form-hint">${proxyHint}</p>${conflictMessage}${emptyCredentials}</section><section class="panel client-json-panel"><div class="section-heading"><div><h2>MCP JSON 配置</h2><p>地址包含 MCP 调用 Token；headers 包含${sourceLabel}凭证。</p></div>${button('复制 JSON', 'copy-client-json', 'copy', 'primary', server.id, copyDisabled)}</div><div class="client-json-toolbar"><span>mcpServers · ${e(server.slug)}${loaded ? ` · ${Object.keys(defaults.headers).length} 个自动配置 Header` : ''}</span></div><pre class="client-json-preview" tabindex="0" aria-label="MCP JSON 配置"><code id="client-json-code">${e(json)}</code></pre><div id="client-config-error" role="alert" class="form-error" ${error ? '' : 'hidden'}>${e(error)}</div><p class="form-hint">复制后的 JSON 会携带其中显示的认证值，请按客户端配置文件的访问权限妥善保管。</p></section></div>`;
   }
   function updateClientConfig() {
     const server = getServer(state.selectedId);
@@ -251,10 +264,10 @@
     const server = getServer(state.selectedId);
     const doc = sourceDocuments(server)[0];
     const templates = {
-      empty: {}, base: { base_url: doc?.baseUrl || '<上游 API 基础地址>' },
+      empty: {}, base: { base_url: isProxy(server) ? server.proxy?.url || '<上游 MCP 地址>' : doc?.baseUrl || '<上游 API 基础地址>' },
       basic: { Authorization: 'Basic <base64(username:password)>' },
       bearer: { Authorization: 'Bearer <上游 Token>' },
-      custom: { base_url: doc?.baseUrl || '<上游 API 基础地址>', 'X-API-Key': '<你的 API Key>' },
+      custom: { 'X-API-Key': '<你的 API Key>' },
     };
     clientDraft(server).text = JSON.stringify(templates[kind] || {}, null, 2); render();
   }
@@ -321,7 +334,11 @@
     state.dialog = dialog;
     if (dialog.kind === 'editor') {
       const server = getServer(dialog.id);
-      dialog.draft = server ? structuredClone(server.draft || { name: server.name, slug: server.slug, description: server.description, operationIds: server.operationIds, color: server.color }) : { name: '', slug: `service-${C.uid().slice(0, 6)}`, description: '', operationIds: [], color: 'blue' };
+      dialog.draft = server ? structuredClone(server.draft || { type: server.type || 'api', name: server.name, slug: server.slug, description: server.description, operationIds: server.operationIds, color: server.color, proxy: server.proxy }) : { type: dialog.serverType || 'api', name: '', slug: `service-${C.uid().slice(0, 6)}`, description: '', operationIds: [], color: 'blue' };
+      dialog.draft.type ||= 'api';
+      dialog.draft.proxy ||= { url: '', headers: {} };
+      dialog.proxyHeadersText = JSON.stringify(dialog.draft.proxy.headers || {}, null, 2);
+      dialog.loadingProxy = !!server && isProxy(dialog.draft);
       dialog.query = ''; dialog.documentFilter = 'all'; dialog.methodFilter = 'all';
       if (!server && dialog.sourceDocumentId) {
         const doc = getDocument(dialog.sourceDocumentId);
@@ -344,6 +361,7 @@
     app.inert = true;
     document.body.style.overflow = 'hidden';
     renderDialog();
+    if (dialog.kind === 'editor' && dialog.loadingProxy) loadProxyEditor(dialog);
     if (dialog.kind === 'test') startTest(dialog);
     if (dialog.kind === 'operation') loadOperationTest(dialog);
   }
@@ -382,16 +400,29 @@
   }
   const errorSlot = '<div id="dialog-error" hidden role="alert" class="form-error"></div>';
 
+  async function loadProxyEditor(d) {
+    d.loadingProxy = true; d.proxyLoadError = ''; renderDialog(false);
+    try {
+      const config = await api(`/api/servers/${d.id}/proxy-config`);
+      if (state.dialog !== d) return;
+      d.draft.proxy = config;
+      d.proxyHeadersText = JSON.stringify(config.headers || {}, null, 2);
+    } catch (error) { d.proxyLoadError = error.message; }
+    finally { d.loadingProxy = false; if (state.dialog === d) renderDialog(false); }
+  }
+
   function editorDialog(d) {
     const server = getServer(d.id), draft = d.draft;
     const published = server && server.status !== 'draft';
+    const proxy = isProxy(draft);
+    const blocked = !!d.loadingProxy || !!d.proxyLoadError;
     const methods = sortedRequestMethods(allOperations().map(op => op.method));
-    const body = `<div class="editor-steps"><span><b>1</b>服务信息</span>${icon('chevron', 15)}<span><b>2</b>选择 API</span>${icon('chevron', 15)}<span><b>3</b>发布调用地址</span></div>
+    const body = `${d.loadingProxy ? '<div class="client-header-status" role="status">正在读取代理配置…</div>' : ''}${d.proxyLoadError ? `<div class="form-error" role="alert">${e(d.proxyLoadError)}${button('重新读取', 'reload-proxy-config')}</div>` : ''}<fieldset class="editor-fields" ${blocked ? 'disabled' : ''}><div class="service-type-options" aria-label="服务类型">${[['api', 'code', 'API 转换', '从 API 文档选择接口'], ['proxy', 'globe', 'MCP 代理', '连接已有 MCP 服务']].map(([type, glyph, label, hint]) => `<button data-action="editor-type" data-id="${type}" aria-pressed="${draft.type === type}" ${published ? 'disabled' : ''}>${icon(glyph, 22)}<span><strong>${label}</strong><small>${hint}</small></span>${draft.type === type ? icon('circleCheck', 18) : ''}</button>`).join('')}</div><div class="editor-steps"><span><b>1</b>服务信息</span>${icon('chevron', 15)}<span><b>2</b>${proxy ? '配置上游 MCP' : '选择 API'}</span>${icon('chevron', 15)}<span><b>3</b>发布调用地址</span></div>
       <div class="form-grid"><label class="field">服务名称 <span class="required">*</span><input id="draft-name" data-autofocus data-field="draft.name" value="${e(draft.name)}" placeholder="例如：客户服务 MCP" maxlength="40" required></label><label class="field">服务标识 <span class="required">*</span><input id="draft-slug" class="mono" data-field="draft.slug" value="${e(draft.slug)}" ${published ? 'readonly' : ''} maxlength="48" placeholder="customer-service" required><small>${published ? '已发布的标识固定，更新配置后地址不变。' : '使用小写字母、数字和中划线，作为地址中的唯一标识。'}</small></label><label class="field field-full">服务描述<input id="draft-description" data-field="draft.description" value="${e(draft.description)}" placeholder="简单描述这个服务的用途" maxlength="200"></label></div>
-      <div class="editor-section-heading"><h3>选择 API <span id="editor-count" class="count-badge"></span></h3><div class="color-options" aria-label="服务图标颜色">${['green', 'purple', 'blue'].map(tone => `<button type="button" class="color-option ${tone}" aria-label="${{ green: '绿色', purple: '紫色', blue: '蓝色' }[tone]}图标" aria-pressed="${draft.color === tone}" data-action="editor-color" data-id="${tone}">${draft.color === tone ? icon('check', 13) : ''}</button>`).join('')}</div></div>
-      <div class="table-toolbar editor-api-filters">${search('editor-query', '搜索接口名称、路径', '搜索可选 API', d.query)}<select data-field="editor-method" aria-label="按 HTTP 请求方式筛选">${[['all', '全部请求方式'], ...methods.map(method => [method, method])].map(([value, label]) => `<option value="${e(value)}" ${d.methodFilter === value ? 'selected' : ''}>${e(label)}</option>`).join('')}</select><select data-field="editor-document" aria-label="筛选 API 文档"><option value="all">全部文档</option>${state.workspace.documents.map(doc => `<option value="${e(doc.id)}" ${d.documentFilter === doc.id ? 'selected' : ''}>${e(doc.name)}</option>`).join('')}</select></div><div class="api-selection-table" id="editor-table"></div>
-          <div class="endpoint-preview">${icon('arrow', 16)}<span>发布地址</span><code id="editor-endpoint"></code></div>${published ? '<p class="form-hint">保存草稿会保留当前发布版本；点击发布更新后，新勾选的 API 才会生效。</p>' : ''}${errorSlot}`;
-    return modal(server ? '配置 MCP Server' : '创建 MCP Server', '选择需要开放的 API，为它们生成一个独立的调用地址。', body, `<span class="footer-summary" id="editor-summary"></span><div class="button-group">${button('保存草稿', 'save-draft')}${button(published ? '发布更新' : '发布并生成地址', 'publish', 'upload', 'primary')}</div>`, true);
+      <div class="editor-section-heading"><h3>${proxy ? '上游 MCP 配置' : '选择 API <span id="editor-count" class="count-badge"></span>'}</h3><div class="color-options" aria-label="服务图标颜色">${['green', 'purple', 'blue'].map(tone => `<button type="button" class="color-option ${tone}" aria-label="${{ green: '绿色', purple: '紫色', blue: '蓝色' }[tone]}图标" aria-pressed="${draft.color === tone}" data-action="editor-color" data-id="${tone}">${draft.color === tone ? icon('check', 13) : ''}</button>`).join('')}</div></div>
+      ${proxy ? `<div class="proxy-editor"><label class="field">上游 MCP 地址 <span class="required">*</span><input id="proxy-url" class="mono" type="url" data-field="proxy-url" value="${e(draft.proxy.url)}" placeholder="https://mcp.example.com/mcp" maxlength="4096"><small>填写完整的 Streamable HTTP 地址，可包含上游要求的查询参数。</small></label><div class="label-with-action"><label for="proxy-headers">上游认证 Header（可选）</label><div class="button-group">${button('Bearer Token', 'proxy-header-template', '', '', 'bearer')}${button('API Key', 'proxy-header-template', '', '', 'key')}</div></div><textarea id="proxy-headers" class="mono proxy-headers-input" data-field="proxy-headers" spellcheck="false" rows="6" placeholder='{"Authorization": "Bearer 上游Token"}'>${e(d.proxyHeadersText)}</textarea><p class="form-hint">使用 JSON 对象配置 Authorization、X-API-Key 等。客户端请求中的同名 Header 优先。</p><div class="proxy-feature-strip"><span>${icon('check', 15)}无需导入 API 文档</span><span>${icon('check', 15)}保留上游 MCP 能力</span><span>${icon('check', 15)}支持流式响应</span></div></div>` : `<div class="table-toolbar editor-api-filters">${search('editor-query', '搜索接口名称、路径', '搜索可选 API', d.query)}<select data-field="editor-method" aria-label="按 HTTP 请求方式筛选">${[['all', '全部请求方式'], ...methods.map(method => [method, method])].map(([value, label]) => `<option value="${e(value)}" ${d.methodFilter === value ? 'selected' : ''}>${e(label)}</option>`).join('')}</select><select data-field="editor-document" aria-label="筛选 API 文档"><option value="all">全部文档</option>${state.workspace.documents.map(doc => `<option value="${e(doc.id)}" ${d.documentFilter === doc.id ? 'selected' : ''}>${e(doc.name)}</option>`).join('')}</select></div><div class="api-selection-table" id="editor-table"></div>`}
+          <div class="endpoint-preview">${icon('arrow', 16)}<span>发布地址</span><code id="editor-endpoint"></code></div>${published ? '<p class="form-hint">保存草稿保留当前发布版本；发布更新后新配置生效，地址和 Token 不变。</p>' : ''}</fieldset>${errorSlot}`;
+    return modal(server ? '配置 MCP Server' : proxy ? '添加 MCP 代理' : '创建 MCP Server', proxy ? '填写已有 MCP 地址，发布一个独立的代理访问地址。' : '选择需要开放的 API，为它们生成一个独立的调用地址。', body, `<span class="footer-summary" id="editor-summary"></span><div class="button-group">${button('保存草稿', 'save-draft', '', '', '', blocked)}${button(published ? '发布更新' : '发布并生成地址', 'publish', 'upload', 'primary', '', blocked)}</div>`, true);
   }
   function sortedRequestMethods(methods) {
     const order = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT'];
@@ -407,6 +438,11 @@
   function updateEditor(rows = true) {
     const d = state.dialog;
     if (d?.kind !== 'editor') return;
+    document.getElementById('editor-endpoint').textContent = endpoint(d.draft);
+    if (isProxy(d.draft)) {
+      document.getElementById('editor-summary').textContent = 'MCP 代理 · Streamable HTTP';
+      return;
+    }
     const selected = new Set(d.draft.operationIds);
     const ops = visibleEditorOperations();
     const selectedVisible = ops.filter(op => selected.has(op.id)).length;
@@ -448,9 +484,10 @@
   }
   async function saveServer(mode) {
     const d = state.dialog;
-    if (d.busy) return;
+    if (d.busy || d.loadingProxy || d.proxyLoadError) return;
     dialogBusy(d, true);
     try {
+      if (isProxy(d.draft)) d.draft.proxy.headers = C.clientRequestHeaders(d.proxyHeadersText, true);
       const existing = getServer(d.id);
       const result = await api(`/api/servers${existing ? '/' + existing.id : ''}`, existing ? 'PUT' : 'POST', { draft: d.draft, mode });
       await refresh(); invalidateClientHeaders(); dialogBusy(d, false);
@@ -466,7 +503,7 @@
     let body;
     if (d.tab === 'file') body = `<input id="spec-file" type="file" accept=".json,.yaml,.yml,application/json" class="visually-hidden" aria-label="选择 API 文档文件"><button class="upload-zone" data-action="pick-file"><div class="upload-icon">${icon('upload', 27)}</div><strong>${d.fileContent ? e(d.filename) : '点击上传，或将文档拖到这里'}</strong><span>JSON / YAML 格式，最大 2 MB</span>${d.fileContent ? `<span class="upload-loaded">${icon('circleCheck', 15)}文件已读取，可以开始导入</span>` : ''}</button>`;
     if (d.tab === 'paste') body = `<div class="label-with-action"><label for="spec-content">API 文档内容</label><button class="text-button" data-action="example-spec">填入示例文档</button></div><textarea id="spec-content" data-autofocus data-field="import-content" class="spec-textarea mono" spellcheck="false" placeholder="粘贴 OpenAPI JSON 或 YAML 文档…">${e(d.pasteContent)}</textarea>`;
-    if (d.tab === 'url') body = `<div class="url-import"><label class="field">文档 URL<input id="spec-url" data-autofocus type="url" data-field="import-url" value="${e(d.url)}" placeholder="https://api.example.com/openapi.json"></label><p class="form-hint">由 Go 服务下载文档，无需浏览器跨域。访问私网 API 时，请在环境变量中配置主机白名单。</p></div>`;
+    if (d.tab === 'url') body = `<div class="url-import"><label class="field">文档 URL<input id="spec-url" data-autofocus type="url" data-field="import-url" value="${e(d.url)}" placeholder="https://api.example.com/openapi.json"></label><p class="form-hint">由 Go 服务下载文档，无需浏览器跨域。可访问服务端网络可达的 HTTP / HTTPS 文档地址。</p></div>`;
     return modal(d.id ? '更新 API 文档' : '导入 API 文档', d.id ? '保留文档凭证与接口标识；更新会同步应用到引用此文档的 MCP 服务。' : '支持 OpenAPI 3.0 / 3.1、Swagger 2.0 的 JSON 和 YAML 文档。', tabs + body + errorSlot, `<span class="muted small">导入后即可勾选 API 创建服务</span><div class="button-group">${button('取消', 'close-dialog')}<button class="button primary" data-action="submit-import" ${d.busy ? 'disabled' : ''}>${icon(d.busy ? 'loader' : 'upload', 16, d.busy ? 'spin' : '')}${d.busy ? '正在导入…' : '解析并导入'}</button></div>`);
   }
   async function loadFile(file) {
@@ -812,7 +849,8 @@
   }
   async function duplicateServer(id) {
     const original = getServer(id);
-    const draft = { name: `${original.name.slice(0, 35)} 副本`, slug: `${original.slug.slice(0, 37)}-copy-${C.uid().slice(0, 5)}`, description: original.description, color: original.color, operationIds: [...original.operationIds] };
+    const draft = { type: original.type || 'api', name: `${original.name.slice(0, 35)} 副本`, slug: `${original.slug.slice(0, 37)}-copy-${C.uid().slice(0, 5)}`, description: original.description, color: original.color, operationIds: [...original.operationIds] };
+    if (isProxy(original)) draft.proxy = await api(`/api/servers/${original.id}/proxy-config?published=true`);
     const server = await api('/api/servers', 'POST', { draft, mode: 'draft' });
     await refresh(); showServer(server.id); notify('已复制为新服务草稿，可配置后发布');
   }
@@ -885,7 +923,7 @@
       'close-sidebar': () => { state.sidebarOpen = false; render(); document.querySelector('.mobile-menu')?.focus(); },
       'select-server': () => showServer(id),
       'show-server': () => showServer(id),
-      'clear-server-filters': () => { state.serverQuery = ''; state.serverStatus = 'all'; render(); },
+      'clear-server-filters': () => { state.serverQuery = ''; state.serverStatus = 'all'; state.serverType = 'all'; render(); },
       'select-document': () => showDocument(id),
       'clear-document-filters': () => { state.documentQuery = ''; state.documentCredential = 'all'; render(); },
       'filter-document-method': () => { state.apiMethod = id; render(); },
@@ -893,6 +931,7 @@
       'copy-document-url': () => copy(getDocument(id).baseUrl, 'API 基础地址'),
       'create-from-document': () => openDialog({ kind: 'editor', sourceDocumentId: id }),
       create: () => openDialog({ kind: 'editor' }),
+      'create-proxy': () => openDialog({ kind: 'editor', serverType: 'proxy' }),
       edit: () => { state.selectedId = id; openDialog({ kind: 'editor', id }); },
       import: () => openDialog({ kind: 'import' }),
       'update-document': () => openDialog({ kind: 'import', id }),
@@ -920,6 +959,9 @@
       'close-dialog': closeDialog,
       'save-draft': () => saveServer('draft'),
       publish: () => saveServer('publish'),
+      'editor-type': () => { const d = state.dialog; if (getServer(d.id)?.status && getServer(d.id).status !== 'draft') return; d.draft.type = id; renderDialog(false); },
+      'reload-proxy-config': () => loadProxyEditor(state.dialog),
+      'proxy-header-template': () => { const d = state.dialog; try { const headers = C.clientRequestHeaders(d.proxyHeadersText, true); if (id === 'bearer') headers.Authorization = 'Bearer <上游 Token>'; else headers['X-API-Key'] = '<你的 API Key>'; d.proxyHeadersText = JSON.stringify(headers, null, 2); renderDialog(false); } catch (error) { showError(error.message); } },
       'toggle-operation': () => toggleOperation(id),
       'editor-color': () => {
         state.dialog.draft.color = id;
@@ -964,6 +1006,8 @@
       clearError(); updateEditor(false);
     }
     if (field === 'editor-query') { d.query = value; updateEditor(); }
+    if (field === 'proxy-url') { d.draft.proxy.url = value; clearError(); }
+    if (field === 'proxy-headers') { d.proxyHeadersText = value; clearError(); }
     if (field === 'import-content') d.pasteContent = value;
     if (field === 'import-url') d.url = value;
     if (field === 'credential-base') d.baseUrl = value;
@@ -989,7 +1033,7 @@
   });
   document.addEventListener('change', event => {
     const { field, id } = event.target.dataset;
-    if (['serverStatus', 'logStatus', 'documentCredential'].includes(field)) { state[field] = event.target.value; render(); }
+    if (['serverStatus', 'serverType', 'logStatus', 'documentCredential'].includes(field)) { state[field] = event.target.value; render(); }
     if (event.target.id === 'spec-file') loadFile(event.target.files[0]);
     const d = state.dialog;
     if (!d) return;

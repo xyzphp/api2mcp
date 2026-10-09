@@ -86,11 +86,19 @@ type Parameter struct {
 }
 
 type Draft struct {
-	Name         string   `json:"name"`
-	Slug         string   `json:"slug"`
-	Description  string   `json:"description"`
-	OperationIDs []string `json:"operationIds"`
-	Color        string   `json:"color"`
+	Type         string          `json:"type,omitempty"`
+	Name         string          `json:"name"`
+	Slug         string          `json:"slug"`
+	Description  string          `json:"description"`
+	OperationIDs []string        `json:"operationIds"`
+	Color        string          `json:"color"`
+	Proxy        *MCPProxyConfig `json:"proxy,omitempty"`
+}
+
+type MCPProxyConfig struct {
+	URL         string            `json:"url"`
+	Headers     map[string]string `json:"headers,omitempty"`
+	HeaderNames []string          `json:"headerNames,omitempty"`
 }
 
 type Server struct {

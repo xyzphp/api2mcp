@@ -316,6 +316,47 @@ code { overflow-wrap: anywhere; }
 .editor-steps > svg { color: #b0bacb; }
 .editor-section-heading { display: flex; justify-content: space-between; align-items: center; margin: 24px 0 14px; }
 .editor-section-heading h3 { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.editor-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+.service-type-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+.service-type-options > button { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 7px; background: #fff; text-align: left; min-width: 0; }
+.service-type-options > button[aria-pressed='true'] { border-color: #8aafff; background: #f4f7ff; color: #245df5; }
+.service-type-options > button:disabled { opacity: .7; }
+.service-type-options > button > span { flex: 1; }
+.service-type-options strong { display: block; font-size: 13px; font-weight: 600; }
+.service-type-options small { display: block; font-size: 11px; color: #8390a5; line-height: 1.5; margin-top: 4px; }
+.server-type-badge { color: #7252be; background: #f1ecff; border-radius: 4px; padding: 3px 7px; }
+.proxy-upstream-line { display: flex; align-items: center; gap: 7px; min-width: 0; color: #8391a7; font-size: 11px; margin: 12px 0 -5px; }
+.proxy-upstream-line code { color: #627795; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proxy-headers-input { min-height: 140px; font-size: 12px; line-height: 1.7; background: #fafbfe; }
+.proxy-editor .form-hint { margin-top: 9px; }
+.proxy-feature-strip { display: flex; flex-wrap: wrap; gap: 13px 24px; color: #647b9e; font-size: 11px; padding: 16px 0 4px; }
+.proxy-feature-strip > span { display: flex; align-items: center; gap: 6px; }
+.proxy-feature-strip svg { color: #25a76f; }
+.proxy-route { display: flex; align-items: center; gap: 20px; padding: 20px; background: #f7f9fd; border: 1px solid #e8edf5; border-radius: 7px; }
+.proxy-route > div { flex: 1; min-width: 0; }
+.proxy-route > div > span { display: block; color: #8491a6; font-size: 11px; margin-bottom: 9px; }
+.proxy-route code { display: block; color: #3e587b; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.proxy-route-arrow { color: #8babe8; display: flex; }
+.proxy-auth-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 18px; color: #7585a0; font-size: 12px; }
+.proxy-auth-summary > code { background: #f1f5fb; border-radius: 4px; padding: 5px 8px; font-size: 11px; }
+.proxy-auth-summary > .button { margin-left: auto; }
+@media (max-width: 760px) {
+  .service-type-options { gap: 8px; }
+  .service-type-options > button { gap: 8px; padding: 11px 9px; }
+  .service-type-options > button > svg:first-child { width: 18px; }
+  .service-type-options > button > svg:last-child { display: none; }
+  .service-type-options strong { font-size: 12px; }
+  .service-type-options small { font-size: 10px; }
+  .proxy-route { flex-direction: column; align-items: stretch; gap: 14px; padding: 16px; }
+  .proxy-route-arrow { transform: rotate(90deg); align-self: center; }
+  .proxy-auth-summary > .button { margin-left: 0; }
+  .proxy-feature-strip { gap: 10px 15px; }
+  .page-actions { flex-wrap: wrap; }
+  .page-actions .button[data-action='create'] { flex-basis: 100%; }
+  .server-directory .list-toolbar { flex-wrap: wrap; }
+  .server-directory .list-toolbar > .search-input { flex: 1 0 100%; }
+  .server-directory .list-toolbar > select { margin-left: 0; flex: 1 1 40%; }
+}
 .color-options { display: flex; gap: 7px; }
 .color-option { width: 21px; height: 21px; border: 2px solid #fff; box-shadow: 0 0 0 1px #e2e9f4; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; color: #fff; }
 .color-option.green { background: #22b486; }

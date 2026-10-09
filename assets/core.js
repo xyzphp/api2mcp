@@ -10,7 +10,7 @@
     url.searchParams.set('token', server.token);
     return url.toString();
   };
-  function clientRequestHeaders(text = '{}') {
+  function clientRequestHeaders(text = '{}', proxy = false) {
     let value;
     try { value = JSON.parse(text); } catch { throw new Error('客户端 Header JSON 格式不正确。'); }
     const object = value => value && typeof value === 'object' && !Array.isArray(value);
@@ -35,26 +35,29 @@
     if (baseUrl) {
       let parsed;
       try { parsed = new URL(baseUrl); } catch { throw new Error('base_url 需要是有效的 HTTP 或 HTTPS 地址。'); }
-      if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error('base_url 需要是有效的 HTTP 或 HTTPS API 基础地址，不能包含凭证、查询参数或片段。');
+      if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password || (!proxy && parsed.search) || parsed.hash) throw new Error(proxy ? 'base_url 需要是完整的 HTTP 或 HTTPS MCP 地址，不能包含用户名、密码或片段。' : 'base_url 需要是有效的 HTTP 或 HTTPS API 基础地址，不能包含凭证、查询参数或片段。');
     }
     return value;
   }
-  function mergeClientHeaders(defaultHeaders, overrideHeaders) {
+  function mergeClientHeaders(defaultHeaders, overrideHeaders, proxy) {
     const merged = new Map();
-    for (const [name, value] of Object.entries(clientRequestHeaders(JSON.stringify(defaultHeaders || {})))) {
+    for (const [name, value] of Object.entries(clientRequestHeaders(JSON.stringify(defaultHeaders || {}), proxy))) {
       merged.set(name.toLowerCase(), [name, value]);
     }
     for (const [name, value] of Object.entries(overrideHeaders)) {
       const key = name.toLowerCase();
+      if (key === 'base_url') merged.delete('x-api2mcp-base-url');
+      if (key === 'x-api2mcp-base-url') merged.delete('base_url');
       const previous = merged.get(key);
       if (previous) merged.delete(key);
       merged.set(key, [name, value]);
     }
-    return clientRequestHeaders(JSON.stringify(Object.fromEntries(merged.values())));
+    return clientRequestHeaders(JSON.stringify(Object.fromEntries(merged.values())), proxy);
   }
   function clientConfig(server, origin, headersText = '{}', defaultHeaders = {}) {
     if (server.status === 'draft' || !server.token) throw new Error('请先发布服务。');
-    const headers = mergeClientHeaders(defaultHeaders, clientRequestHeaders(headersText));
+    const proxy = server.type === 'proxy';
+    const headers = mergeClientHeaders(defaultHeaders, clientRequestHeaders(headersText, proxy), proxy);
     const config = { type: 'http', url: mcpURLFor(server, origin) };
     if (Object.keys(headers).length) config.headers = headers;
     return JSON.stringify({

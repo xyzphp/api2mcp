@@ -8,6 +8,7 @@ API2MCP 将结构化 API 文档转为可由 HTTP MCP 客户端调用的工具。
 | 环境变量 | [configuration.md](configuration.md) |
 | Docker、局域网、Nginx 与备份 | [deployment.md](deployment.md) |
 | API 凭证、测试与 MCP JSON | [credentials.md](credentials.md) |
+| 代理已有 HTTP MCP | [mcp-proxy.md](mcp-proxy.md) |
 | 管理 HTTP API | [http-api.md](http-api.md) |
 | 开发与验证 | [development.md](development.md) |
 | GitHub CI 与 Release | [github-actions.md](github-actions.md) |

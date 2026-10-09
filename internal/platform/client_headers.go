@@ -33,6 +33,16 @@ func (a *App) serverClientHeaders(w http.ResponseWriter, r *http.Request) error 
 	if server == nil {
 		return httpErr(404, "服务不存在")
 	}
+	if server.Type == "proxy" {
+		result := clientHeaderConfig{Headers: map[string]string{}, Conflicts: []string{}}
+		if server.Proxy != nil {
+			result.Headers[proxyBaseURLHeader] = server.Proxy.URL
+			for name, value := range server.Proxy.Headers {
+				result.Headers[name] = value
+			}
+		}
+		return sendJSON(w, 200, result)
+	}
 
 	selected := map[string]bool{}
 	for _, id := range server.OperationIDs {

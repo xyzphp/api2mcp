@@ -7,7 +7,8 @@
 | POST | `/api/login` | `{ "token": "..." }` 登录 |
 | POST | `/api/logout` | 退出 |
 | GET | `/api/workspace` | 已脱敏的管理数据（含管理员可复制的服务调用 Token） |
-| GET | `/api/servers/{id}/client-headers` | 管理员会话下读取该服务所选 API 文档的一致 Header 凭证，用于生成客户端 JSON |
+| GET | `/api/servers/{id}/client-headers` | 管理员读取所选文档的共同 Header 凭证，或代理目标 / Header，用于生成客户端 JSON |
+| GET | `/api/servers/{id}/proxy-config` | 管理员读取代理目标及 Header 值，默认读取待发布草稿；`?published=true` 读取当前发布版本 |
 | POST / PUT | `/api/documents` / `/api/documents/{id}` | `{content,filename}` 或 `{url}` 导入 / 更新 |
 | PUT | `/api/documents/{id}/credentials` | `{baseUrl,kind,header,username,value,replaceValue,bodyFormat,entries}` 配置上游；`entries` 每项含 `{id,in,name,value,valueType,enabled,replaceValue}` |
 | GET | `/api/documents/{id}/test?operationId=...` | 获取移除固定凭证字段后的测试 Schema、Body 格式与超时 |
@@ -20,7 +21,7 @@
 | POST | `/api/servers/{id}/test` | 真实连接与工具列表检查 |
 | POST | `/api/servers/{id}/call` | `{name,arguments}` 经 MCP 协议试调用 |
 | GET / DELETE | `/api/logs` | 查询 / 清空调用记录 |
-| POST | `/mcp/{slug}` | MCP Streamable HTTP，需 URL 的 token 或兼容 Bearer Token |
+| GET / POST / DELETE | `/mcp/{slug}` | MCP Streamable HTTP，需 URL 的 token 或兼容 Bearer Token；代理服务透传上游支持的方法 |
 | GET | `/healthz` | 无敏感信息的健康状态 |
 
 
@@ -57,3 +58,23 @@
 ```
 
 不能用后台会话 Cookie 代替 MCP Token，也不能用后台管理员 Token 直接调用某个服务。上游凭证格式与优先级见[凭证说明](credentials.md)。
+
+创建 MCP 代理服务时使用 `type: "proxy"`，不需要 `operationIds`：
+
+```json
+{
+  "mode": "publish",
+  "draft": {
+    "type": "proxy",
+    "name": "远端 MCP 代理",
+    "slug": "remote-proxy",
+    "color": "purple",
+    "proxy": {
+      "url": "https://mcp.example.com/mcp?tenant=demo",
+      "headers": { "Authorization": "Bearer <UPSTREAM_TOKEN>" }
+    }
+  }
+}
+```
+
+不提供 `type` 时兼容原有 API 转换服务。工作空间及保存响应不返回代理 Header 值；更新代理时应先读取 `proxy-config`，提交完整 `proxy` 对象。空 `headers` 清除已有认证 Header。代理配置和兼容范围见 [MCP 代理](mcp-proxy.md)。

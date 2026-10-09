@@ -112,6 +112,7 @@ func (a *App) Handler() http.Handler {
 	admin("POST /api/servers", a.saveServer)
 	admin("PUT /api/servers/{id}", a.saveServer)
 	admin("GET /api/servers/{id}/client-headers", a.serverClientHeaders)
+	admin("GET /api/servers/{id}/proxy-config", a.serverProxyConfig)
 	admin("POST /api/servers/{id}/state", a.serverState)
 	admin("POST /api/servers/{id}/token", a.rotateToken)
 	admin("DELETE /api/servers/{id}", a.deleteServer)
@@ -198,6 +199,9 @@ func (a *App) workspace(w http.ResponseWriter, r *http.Request) error {
 	workspace.Settings.EndpointOrigin = requestOrigin(r) + a.cfg.BasePath
 	for i := range workspace.Documents {
 		workspace.Documents[i].Credential = publicCredential(workspace.Documents[i].Credential)
+	}
+	for i := range workspace.Servers {
+		workspace.Servers[i] = publicServer(workspace.Servers[i])
 	}
 	return sendJSON(w, 200, workspace)
 }

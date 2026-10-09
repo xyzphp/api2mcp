@@ -147,6 +147,12 @@ func (a *App) saveCredential(w http.ResponseWriter, r *http.Request) error {
 var slugPattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?$`)
 
 func validateDraft(d *Draft, existing *Server, s *Workspace, publish bool) error {
+	if d.Type == "" {
+		d.Type = "api"
+	}
+	if d.Type != "api" && d.Type != "proxy" {
+		return bad("服务类型应为 API 转换或 MCP 代理")
+	}
 	d.Name, d.Slug, d.Description = strings.TrimSpace(d.Name), strings.ToLower(strings.TrimSpace(d.Slug)), strings.TrimSpace(d.Description)
 	if utf8.RuneCountInString(d.Name) < 1 || utf8.RuneCountInString(d.Name) > 40 {
 		return bad("服务名称应为 1–40 个字符")
@@ -163,11 +169,19 @@ func validateDraft(d *Draft, existing *Server, s *Workspace, publish bool) error
 	if existing != nil && existing.Status != "draft" && d.Slug != existing.Slug {
 		return bad("已发布服务的标识不可修改")
 	}
+	if existing != nil && existing.Status != "draft" && d.Type != serverType(existing.Draft) {
+		return bad("已发布服务的类型不可修改，请创建新服务")
+	}
 	for _, server := range s.Servers {
 		if server.Slug == d.Slug && (existing == nil || server.ID != existing.ID) {
 			return httpErr(409, "服务标识已被占用")
 		}
 	}
+	if d.Type == "proxy" {
+		d.OperationIDs = []string{}
+		return validateMCPProxy(d.Proxy, publish)
+	}
+	d.Proxy = nil
 	available := map[string]Document{}
 	for _, doc := range s.Documents {
 		for _, op := range doc.Operations {
@@ -257,7 +271,7 @@ func (a *App) saveServer(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return sendJSON(w, 200, result)
+	return sendJSON(w, 200, publicServer(result))
 }
 
 func (a *App) serverState(w http.ResponseWriter, r *http.Request) error {

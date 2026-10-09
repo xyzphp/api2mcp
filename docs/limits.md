@@ -7,7 +7,8 @@
 - 路径 / 查询 / Header / Cookie 参数，JSON 和 URL 编码表单 Body。
 - query 的 form / deepObject / spaceDelimited / pipeDelimited；path / header 的 simple，简单 Cookie 参数。
 - 同文档内部 `$ref`（受解析器校验约束）、工具 JSON Schema 校验。
-- 无状态 Streamable HTTP，使用官方 MCP Go SDK；不提供 stdio 命令行服务。
+- API 转换使用官方 MCP Go SDK 的无状态 Streamable HTTP。
+- 已有 MCP URL 的 Streamable HTTP 代理，保留上游会话、工具 / 资源 / 提示词与 JSON / SSE 响应；不提供 stdio 命令行服务。
 
 ## 当前未提供
 
@@ -30,8 +31,9 @@
 | 单文档凭证条目 | 100 |
 | 单凭证值 / 凭证总量 | 16 KB / 256 KB |
 | 客户端 Header | 总量 16 KB，最多 100 项 |
-| 上游响应 | 4 MB |
-| 上游超时 | 默认 20 秒，可设 1–120 秒 |
+| API 上游响应 | 4 MB；MCP 代理不套用此响应体限制 |
+| API 上游超时 | 默认 20 秒，可设 1–120 秒 |
+| MCP 代理 | 连接 / 响应头沿用上游超时；已建立的流持续转发，循环最多 8 层 |
 | 管理会话 | 默认 8 小时，重启失效 |
 | 调用日志 | 最近 1000 条 |
 

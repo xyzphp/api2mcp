@@ -42,6 +42,10 @@ func (a *App) serveMCP(w http.ResponseWriter, r *http.Request) {
 		_ = sendJSON(w, 503, map[string]string{"error": "服务已停用"})
 		return
 	}
+	if server.Type == "proxy" {
+		a.serveMCPProxy(w, r, *server)
+		return
+	}
 	baseURL, overrideBaseURL, err := proxyBaseURL(r)
 	if err != nil {
 		_ = sendJSON(w, 400, map[string]string{"error": err.Error()})
@@ -184,6 +188,12 @@ func (a *App) testServer(w http.ResponseWriter, r *http.Request) error {
 	session, err := a.connect(ctx, server)
 	if err == nil {
 		defer session.Close()
+		if session.InitializeResult().Capabilities.Tools == nil {
+			result["success"] = true
+			result["error"], result["duration"] = "", time.Since(start).Milliseconds()
+			a.record(server, "连接测试 / initialize", true, time.Since(start), 0, "")
+			return sendJSON(w, 200, result)
+		}
 		var tools []*mcp.Tool
 		listed, listErr := session.ListTools(ctx, &mcp.ListToolsParams{})
 		err = listErr
@@ -202,6 +212,9 @@ func (a *App) testServer(w http.ResponseWriter, r *http.Request) error {
 	message := ""
 	if err != nil {
 		message = "连接失败，请确认服务已发布并启用，且本机 HTTP 服务可访问"
+		if server.Type == "proxy" {
+			message = "代理连接失败，请检查上游 MCP 地址、认证 Header、网络及 Streamable HTTP 支持情况"
+		}
 	} else {
 		result["success"] = true
 	}
