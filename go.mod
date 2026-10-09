@@ -1,11 +1,11 @@
 module api2mcp
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/google/jsonschema-go v0.4.3
 	github.com/modelcontextprotocol/go-sdk v1.7.0
-	golang.org/x/sys v0.42.0
+	golang.org/x/sys v0.48.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.50.0
 )
